@@ -1,6 +1,6 @@
 import bcrypt from "bcrypt";
 import { db } from "@vercel/postgres";
-import { invoices, customers, revenue, users } from "../lib/placeholder-data";
+import { users, invoices, customers, revenue } from "../lib/placeholder-data";
 
 const client = await db.connect();
 
@@ -101,19 +101,27 @@ async function seedRevenue() {
   return insertedRevenue;
 }
 
-export async function GET() {
-  return Response.json({
-    message:
-      "Uncomment this file and remove this line. You can delete this file when you are finished.",
-  });
+async function seedData() {
   try {
     await client.sql`BEGIN`;
-    await seedUsers();
-    await seedCustomers();
-    await seedInvoices();
-    await seedRevenue();
+    await Promise.all([
+      seedUsers(),
+      seedCustomers(),
+      seedInvoices(),
+      seedRevenue(),
+    ]);
     await client.sql`COMMIT`;
 
+    return { message: "Database seeded successfully" };
+  } catch (error) {
+    await client.sql`ROLLBACK`;
+    return { error, status: 500 };
+  }
+}
+
+export async function GET() {
+  try {
+    await seedData();
     return Response.json({ message: "Database seeded successfully" });
   } catch (error) {
     await client.sql`ROLLBACK`;
