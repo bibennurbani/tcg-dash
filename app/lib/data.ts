@@ -42,9 +42,13 @@ export async function fetchLatestInvoices() {
     });
 
     const latestInvoices = data.map((invoice) => ({
-      ...invoice,
+      id: invoice.id,
+      name: invoice.customer.name,
+      image_url: invoice.customer.image_url,
+      email: invoice.customer.email,
       amount: formatCurrency(invoice.amount),
     }));
+
     return latestInvoices;
   } catch (error) {
     console.error('Database Error:', error);
@@ -61,14 +65,15 @@ export async function fetchCardData() {
       prisma.invoice.groupBy({
         by: ['status'],
         _sum: { amount: true },
+        orderBy: undefined,
       }),
     ]);
 
     const totalPaidInvoices = formatCurrency(
-      invoiceStatus.find((item) => item.status === 'paid')?._sum.amount || 0
+      invoiceStatus?.find((item) => item.status === 'paid')?._sum.amount || 0
     );
     const totalPendingInvoices = formatCurrency(
-      invoiceStatus.find((item) => item.status === 'pending')?._sum.amount || 0
+      invoiceStatus?.find((item) => item.status === 'pending')?._sum.amount || 0
     );
 
     return {
