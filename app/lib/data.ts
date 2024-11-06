@@ -14,6 +14,7 @@ const prisma = new PrismaClient();
 // Fetch Revenue
 export async function fetchRevenue() {
   try {
+    // await new Promise((resolve) => setTimeout(resolve, 3000));
     const data = await prisma.revenue.findMany();
     return data;
   } catch (error) {
