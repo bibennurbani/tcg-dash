@@ -1,10 +1,11 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Status } from '@prisma/client';
 import { formatCurrency } from './utils';
 import {
   CustomerField,
   CustomersTableType,
   InvoiceForm,
   InvoicesTable,
+  LatestInvoice,
   LatestInvoiceRaw,
   Revenue,
 } from './definitions';
@@ -12,11 +13,10 @@ import {
 const prisma = new PrismaClient();
 
 // Fetch Revenue
-export async function fetchRevenue() {
+export async function fetchRevenue(): Promise<Revenue[]> {
   try {
-    // await new Promise((resolve) => setTimeout(resolve, 3000));
     const data = await prisma.revenue.findMany();
-    return data;
+    return data as Revenue[];
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch revenue data.');
@@ -24,7 +24,7 @@ export async function fetchRevenue() {
 }
 
 // Fetch Latest Invoices
-export async function fetchLatestInvoices() {
+export async function fetchLatestInvoices(): Promise<LatestInvoice[]> {
   try {
     const data = await prisma.invoice.findMany({
       select: {
@@ -41,8 +41,9 @@ export async function fetchLatestInvoices() {
       orderBy: { date: 'desc' },
       take: 5,
     });
+    console.log('🚀 ~ fetchLatestInvoices ~ data:', data);
 
-    const latestInvoices = data.map((invoice) => ({
+    const latestInvoices: LatestInvoice[] = data.map((invoice) => ({
       id: invoice.id,
       name: invoice.customer.name,
       image_url: invoice.customer.image_url,
@@ -58,7 +59,7 @@ export async function fetchLatestInvoices() {
 }
 
 // Fetch Card Data
-export async function fetchCardData() {
+export async function fetchCardData(): Promise<any> {
   try {
     const [invoiceCount, customerCount, invoiceStatus] = await prisma.$transaction([
       prisma.invoice.count(),
@@ -66,15 +67,15 @@ export async function fetchCardData() {
       prisma.invoice.groupBy({
         by: ['status'],
         _sum: { amount: true },
-        orderBy: undefined,
+        orderBy: { status: 'asc' },
       }),
     ]);
 
     const totalPaidInvoices = formatCurrency(
-      invoiceStatus?.find((item) => item.status === 'paid')?._sum.amount || 0
+      invoiceStatus?.find((item) => item.status === 'paid')?._sum?.amount ?? 0
     );
     const totalPendingInvoices = formatCurrency(
-      invoiceStatus?.find((item) => item.status === 'pending')?._sum.amount || 0
+      invoiceStatus?.find((item) => item.status === 'pending')?._sum?.amount ?? 0
     );
 
     return {
@@ -92,27 +93,41 @@ export async function fetchCardData() {
 const ITEMS_PER_PAGE = 6;
 
 // Fetch Filtered Invoices
-export async function fetchFilteredInvoices(query: string, currentPage: number) {
+export async function fetchFilteredInvoices(
+  query: string,
+  currentPage: number
+): Promise<InvoicesTable[]> {
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
   try {
-    const invoices = await prisma.invoice.findMany({
-      where: {
-        OR: [
-          { customer: { name: { contains: query, mode: 'insensitive' } } },
-          { customer: { email: { contains: query, mode: 'insensitive' } } },
-          { amount: { equals: parseFloat(query) || undefined } },
-          { date: { contains: query } },
-          { status: { contains: query, mode: 'insensitive' } },
-        ],
-      },
-      include: {
-        customer: { select: { name: true, email: true, image_url: true } },
-      },
-      orderBy: { date: 'desc' },
-      take: ITEMS_PER_PAGE,
-      skip: offset,
-    });
+    const invoices = await prisma.$queryRaw<InvoicesTable[]>`
+      SELECT
+        "Invoice"."id",
+        "Invoice"."amount",
+        "Invoice"."date",
+        "Invoice"."status",
+        "Customer"."name",
+        "Customer"."email",
+        "Customer"."image_url"
+      FROM "Invoice"
+      JOIN "Customer" ON "Invoice"."customerId" = "Customer".id
+      WHERE
+        "Customer"."name" ILIKE ${`%${query}%`} OR
+        "Customer"."email" ILIKE ${`%${query}%`} OR
+        "Invoice"."amount"::text ILIKE ${`${query}%`} OR
+        "Invoice"."date"::text ILIKE ${`%${query}%`} OR
+        "Invoice"."status"::text ILIKE ${`%${query}%`}
+      ORDER BY "Invoice"."date" DESC
+      LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
+    `;
+
+    console.log('🚀 ~ invoices:', invoices);
+
+    // Ensure invoices are returned
+    if (!invoices) {
+      console.log('No invoices found for the given query');
+      return [];
+    }
 
     return invoices;
   } catch (error) {
