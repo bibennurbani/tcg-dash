@@ -137,21 +137,22 @@ export async function fetchFilteredInvoices(
 }
 
 // Fetch Invoices Pages
-export async function fetchInvoicesPages(query: string) {
+export async function fetchInvoicesPages(query: string): Promise<number> {
   try {
-    const count = await prisma.invoice.count({
-      where: {
-        OR: [
-          { customer: { name: { contains: query, mode: 'insensitive' } } },
-          { customer: { email: { contains: query, mode: 'insensitive' } } },
-          { amount: { equals: parseFloat(query) || undefined } },
-          { date: { contains: query } },
-          { status: { contains: query, mode: 'insensitive' } },
-        ],
-      },
-    });
+    const countResult = await prisma.$queryRaw<{ count: BigInt }[]>`
+      SELECT COUNT(*)
+      FROM "Invoice"
+      JOIN "Customer" ON "Invoice"."customerId" = "Customer".id
+      WHERE
+        "Customer"."name" ILIKE ${`%${query}%`} OR
+        "Customer"."email" ILIKE ${`%${query}%`} OR
+        "Invoice"."amount"::text ILIKE ${`%${query}%`} OR
+        "Invoice"."date"::text ILIKE ${`%${query}%`} OR
+        "Invoice"."status"::text ILIKE ${`%${query}%`}
+    `;
 
-    const totalPages = Math.ceil(count / ITEMS_PER_PAGE);
+    const totalCount = Number(countResult[0]?.count ?? 0);
+    const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
     return totalPages;
   } catch (error) {
     console.error('Database Error:', error);
