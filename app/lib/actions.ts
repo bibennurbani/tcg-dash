@@ -2,6 +2,8 @@
 
 import { Prisma, PrismaClient } from '@prisma/client';
 import { z } from 'zod';
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 
 const FormSchema = z.object({
   id: z.string(),
@@ -29,4 +31,7 @@ export async function createInvoice(formData: FormData) {
       customerId: customerId,
     },
   });
+
+  revalidatePath('/dashboard/invoices');
+  redirect('/dashboard/invoices');
 }
