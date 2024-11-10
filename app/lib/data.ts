@@ -167,7 +167,7 @@ export async function fetchInvoiceById(id: string) {
       where: { id },
       select: {
         id: true,
-        customer_id: true,
+        customerId: true,
         amount: true,
         status: true,
       },
