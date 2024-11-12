@@ -41,7 +41,6 @@ export async function fetchLatestInvoices(): Promise<LatestInvoice[]> {
       orderBy: { date: 'desc' },
       take: 5,
     });
-    console.log('🚀 ~ fetchLatestInvoices ~ data:', data);
 
     const latestInvoices: LatestInvoice[] = data.map((invoice) => ({
       id: invoice.id,
@@ -120,8 +119,6 @@ export async function fetchFilteredInvoices(
       ORDER BY "Invoice"."date" DESC
       LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
     `;
-
-    console.log('🚀 ~ invoices:', invoices);
 
     // Ensure invoices are returned
     if (!invoices) {
