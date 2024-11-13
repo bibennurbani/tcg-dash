@@ -1,14 +1,6 @@
-import { PrismaClient, Status } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { formatCurrency } from './utils';
-import {
-  CustomerField,
-  CustomersTableType,
-  InvoiceForm,
-  InvoicesTable,
-  LatestInvoice,
-  LatestInvoiceRaw,
-  Revenue,
-} from './definitions';
+import { CardData, InvoicesTable, LatestInvoice, Revenue } from './definitions';
 
 const prisma = new PrismaClient();
 
@@ -58,7 +50,7 @@ export async function fetchLatestInvoices(): Promise<LatestInvoice[]> {
 }
 
 // Fetch Card Data
-export async function fetchCardData(): Promise<any> {
+export async function fetchCardData(): Promise<CardData> {
   try {
     const [invoiceCount, customerCount, invoiceStatus] = await prisma.$transaction([
       prisma.invoice.count(),
@@ -136,7 +128,7 @@ export async function fetchFilteredInvoices(
 // Fetch Invoices Pages
 export async function fetchInvoicesPages(query: string): Promise<number> {
   try {
-    const countResult = await prisma.$queryRaw<{ count: BigInt }[]>`
+    const countResult = await prisma.$queryRaw<{ count: bigint }[]>`
       SELECT COUNT(*)
       FROM "Invoice"
       JOIN "Customer" ON "Invoice"."customerId" = "Customer".id
