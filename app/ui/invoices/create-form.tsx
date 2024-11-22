@@ -15,6 +15,7 @@ import { createInvoice, State } from '@/app/lib/actions';
 export default function Form({ customers }: { customers: CustomerField[] }) {
   const initialState: State = { message: null, errors: {} };
   const [state, formAction] = useActionState(createInvoice, initialState);
+  console.log('🚀 ~ Form ~ state:', state);
   return (
     <form action={formAction}>
       <div className='rounded-md bg-gray-50 p-4 md:p-6'>
