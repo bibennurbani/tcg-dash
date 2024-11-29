@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { formatCurrency } from './utils';
 import { CardData, InvoicesTable, LatestInvoice, Revenue } from './definitions';
+import { off } from 'process';
 
 const prisma = new PrismaClient();
 
@@ -177,7 +178,7 @@ export async function fetchInvoiceById(id: string) {
 export async function fetchCustomers() {
   try {
     const customers = await prisma.customer.findMany({
-      select: { id: true, name: true },
+      select: { id: true, name: true, email: true },
       orderBy: { name: 'asc' },
     });
     return customers;
@@ -188,8 +189,9 @@ export async function fetchCustomers() {
 }
 
 // Fetch Filtered Customers
-export async function fetchFilteredCustomers(query: string) {
+export async function fetchFilteredCustomers(query: string, currentPage: number) {
   try {
+    const offset = (currentPage - 1) * ITEMS_PER_PAGE;
     const customers = await prisma.customer.findMany({
       where: {
         OR: [
@@ -201,6 +203,8 @@ export async function fetchFilteredCustomers(query: string) {
         invoices: true,
       },
       orderBy: { name: 'asc' },
+      skip: offset,
+      take: ITEMS_PER_PAGE,
     });
 
     return customers.map((customer) => ({
